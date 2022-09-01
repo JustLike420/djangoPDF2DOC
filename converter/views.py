@@ -6,14 +6,8 @@ from pdf2docx import Converter
 from djangoPDF2DOC.settings import BASE_DIR
 
 
-def upload_file(request):
-    if request.method == 'POST':
-        uploaded_file = request.FILES['document']
-        if uploaded_file.content_type == 'application/pdf':
-            fs = FileSystemStorage()
-            filename = fs.save(uploaded_file.name, uploaded_file)
-            uploaded_file_url = fs.url(filename)
-            output_file_url = str(BASE_DIR) + '/media/' + filename.replace('pdf', 'docx')
+def home(request):
+    return render(request, 'home.html')
 
             cv = Converter(str(BASE_DIR) + uploaded_file_url)
             cv.convert(output_file_url)
