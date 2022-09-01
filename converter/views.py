@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from pdf2docx import Converter
 from djangoPDF2DOC.settings import BASE_DIR
+import tabula
 
 
 def home(request):
@@ -29,3 +30,21 @@ def convert_pdf_docx(request):
             response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'docx')
             return response
     return render(request, 'pdf_docx.html')
+
+def convert_pdf_excel(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES['document']
+        if uploaded_file.content_type == 'application/pdf':
+            fs = FileSystemStorage()
+            filename = fs.save(uploaded_file.name, uploaded_file)
+            uploaded_file_url = fs.url(filename)
+            output_file_url = str(BASE_DIR) + '/media/' + filename.replace('pdf', 'xlsx')
+
+            cv = tabula.read_pdf(str(BASE_DIR) + uploaded_file_url, pages='all')[0]
+            cv.to_excel(output_file_url)
+            path = open(output_file_url, 'rb')
+            mime_type, _ = mimetypes.guess_type(output_file_url)
+            response = HttpResponse(path, content_type=mime_type)
+            response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'xlsx')
+            return response
+    return render(request, 'pdf_excel.html')
