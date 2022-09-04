@@ -5,6 +5,8 @@ from django.shortcuts import render
 from pdf2docx import Converter
 from djangoPDF2DOC.settings import BASE_DIR
 import tabula
+from pdf2jpg import pdf2jpg
+import jpg2pdf
 
 
 def home(request):
@@ -31,6 +33,7 @@ def convert_pdf_docx(request):
             return response
     return render(request, 'pdf_docx.html')
 
+
 def convert_pdf_excel(request):
     if request.method == 'POST':
         uploaded_file = request.FILES['document']
@@ -48,3 +51,41 @@ def convert_pdf_excel(request):
             response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'xlsx')
             return response
     return render(request, 'pdf_excel.html')
+
+
+def convert_pdf_jpg(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES['document']
+        if uploaded_file.content_type == 'application/pdf':
+            fs = FileSystemStorage()
+            filename = fs.save(uploaded_file.name, uploaded_file)
+            uploaded_file_url = fs.url(filename)
+
+            result = pdf2jpg.convert_pdf2jpg(str(BASE_DIR) + uploaded_file_url, str(BASE_DIR) + '/media/', dpi=300, pages="ALL")
+            output_file_url = result[0]['output_jpgfiles'][0]
+            path = open(output_file_url, 'rb')
+            mime_type, _ = mimetypes.guess_type(output_file_url)
+            response = HttpResponse(path, content_type=mime_type)
+            response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'jpg')
+            return response
+    return render(request, 'pdf_excel.html')
+
+
+def convert_jpg_pdf(request):
+    if request.method == 'POST':
+        uploaded_file = request.FILES['document']
+        if uploaded_file.content_type == 'image/jpeg':
+            fs = FileSystemStorage()
+            filename = fs.save(uploaded_file.name, uploaded_file)
+            uploaded_file_url = fs.url(filename)
+            output_file_url = str(BASE_DIR) + '/media/' + filename.replace('jpg', 'pdf')
+
+            with jpg2pdf.create(output_file_url) as pdf:
+                pdf.add(str(BASE_DIR) + uploaded_file_url)
+
+            path = open(output_file_url, 'rb')
+            mime_type, _ = mimetypes.guess_type(output_file_url)
+            response = HttpResponse(path, content_type=mime_type)
+            response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('jpg', 'pdf')
+            return response
+    return render(request, 'jpg_pdf.html')
