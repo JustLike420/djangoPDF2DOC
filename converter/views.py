@@ -7,10 +7,20 @@ from djangoPDF2DOC.settings import BASE_DIR
 import tabula
 from pdf2jpg import pdf2jpg
 import jpg2pdf
-
+from .models import UsersFiles
+from django.core.files import File
 
 def home(request):
     return render(request, 'home.html')
+
+
+def save_file_user(request, path):
+    with open(path, mode='rb') as f:
+        item = UsersFiles.objects.create(
+            user=request.user,
+            file=File(f, name=path.split("\\")[-1]),
+        )
+        item.save()
 
 
 def convert_pdf_docx(request):
@@ -27,6 +37,7 @@ def convert_pdf_docx(request):
             cv.close()
 
             path = open(output_file_url, 'rb')
+            save_file_user(request, output_file_url)
             mime_type, _ = mimetypes.guess_type(output_file_url)
             response = HttpResponse(path, content_type=mime_type)
             response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'docx')
@@ -45,6 +56,7 @@ def convert_pdf_excel(request):
 
             cv = tabula.read_pdf(str(BASE_DIR) + uploaded_file_url, pages='all')[0]
             cv.to_excel(output_file_url)
+            save_file_user(request, output_file_url)
             path = open(output_file_url, 'rb')
             mime_type, _ = mimetypes.guess_type(output_file_url)
             response = HttpResponse(path, content_type=mime_type)
@@ -61,12 +73,15 @@ def convert_pdf_jpg(request):
             filename = fs.save(uploaded_file.name, uploaded_file)
             uploaded_file_url = fs.url(filename)
 
-            result = pdf2jpg.convert_pdf2jpg(str(BASE_DIR) + uploaded_file_url, str(BASE_DIR) + '/media/', dpi=300, pages="ALL")
+            result = pdf2jpg.convert_pdf2jpg(str(BASE_DIR) + uploaded_file_url, str(BASE_DIR) + '/media/', dpi=300,
+                                             pages="ALL")
             output_file_url = result[0]['output_jpgfiles'][0]
+            save_file_user(request, output_file_url)
             path = open(output_file_url, 'rb')
             mime_type, _ = mimetypes.guess_type(output_file_url)
             response = HttpResponse(path, content_type=mime_type)
             response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('pdf', 'jpg')
+
             return response
     return render(request, 'pdf_excel.html')
 
@@ -82,7 +97,7 @@ def convert_jpg_pdf(request):
 
             with jpg2pdf.create(output_file_url) as pdf:
                 pdf.add(str(BASE_DIR) + uploaded_file_url)
-
+            save_file_user(request, output_file_url)
             path = open(output_file_url, 'rb')
             mime_type, _ = mimetypes.guess_type(output_file_url)
             response = HttpResponse(path, content_type=mime_type)
