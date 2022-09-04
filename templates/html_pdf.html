@@ -5,14 +5,17 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>PDF TO HTML</title>
 </head>
 <body>
+<h1>HTML to PDF</h1>
 <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    <input type="file" name="document">
+    <input type="file" name="document" accept="text/html">
     <button type="submit">Upload file</button>
 
 </form>
+
+<a href="{% url 'home' %}">home</a>
 </body>
 </html>

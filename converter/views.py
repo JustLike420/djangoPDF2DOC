@@ -1,4 +1,5 @@
 import mimetypes
+import pdfkit
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -10,16 +11,22 @@ import jpg2pdf
 from .models import UsersFiles
 from django.core.files import File
 
+
 def home(request):
     return render(request, 'home.html')
 
 
 def save_file_user(request, path):
     with open(path, mode='rb') as f:
-        item = UsersFiles.objects.create(
-            user=request.user,
-            file=File(f, name=path.split("\\")[-1]),
-        )
+        if request.user.is_authenticated:
+            item = UsersFiles.objects.create(
+                user=request.user,
+                file=File(f, name=path.split("\\")[-1]),
+            )
+        else:
+            item = UsersFiles.objects.create(
+                file=File(f, name=path.split("\\")[-1]),
+            )
         item.save()
 
 
@@ -104,3 +111,27 @@ def convert_jpg_pdf(request):
             response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('jpg', 'pdf')
             return response
     return render(request, 'jpg_pdf.html')
+
+
+def convert_hmtl_pdf(request):
+    uploaded_file = request.FILES['document']
+    if uploaded_file.content_type == 'text/html':
+        fs = FileSystemStorage()
+        filename = fs.save(uploaded_file.name, uploaded_file)
+        uploaded_file_url = fs.url(filename)
+        output_file_url = str(BASE_DIR) + '/media/' + filename.replace('html', 'pdf')
+
+        path_wkhtmltopdf = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+        try:
+            # либа выдает какую-то ошибку.
+            pdfkit.from_file(str(BASE_DIR) + uploaded_file_url, output_file_url, configuration=config)
+        except:
+            pass
+        save_file_user(request, output_file_url)
+        path = open(output_file_url, 'rb')
+        mime_type, _ = mimetypes.guess_type(output_file_url)
+        response = HttpResponse(path, content_type=mime_type)
+        response['Content-Disposition'] = "attachment; filename=%s" % filename.replace('html', 'pdf')
+        return response
+    return render(request, 'html_pdf.html')
